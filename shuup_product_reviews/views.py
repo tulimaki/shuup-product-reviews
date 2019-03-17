@@ -13,7 +13,7 @@ from django.db.transaction import atomic
 from django.http.response import HttpResponseRedirect, JsonResponse
 from django.views.generic import TemplateView, View
 
-from shuup.core.models import Product
+from shuup.core.models import OrderLine, Product, Supplier
 from shuup.front.views.dashboard import DashboardViewMixin
 from shuup_product_reviews.models import ProductReview
 from shuup_product_reviews.utils import (
@@ -22,6 +22,7 @@ from shuup_product_reviews.utils import (
 
 
 class ProductReviewForm(forms.Form):
+    supplier = forms.ModelChoiceField(queryset=Supplier.objects.all(), widget=forms.HiddenInput())
     product = forms.ModelChoiceField(queryset=Product.objects.all(), widget=forms.HiddenInput())
     rating = forms.IntegerField(
         widget=forms.NumberInput(attrs={"class": "rating-input"}),
@@ -40,13 +41,17 @@ class ProductReviewForm(forms.Form):
         data = self.cleaned_data
         if data.get("rating"):
             # fetch the last order that this product was bought
-            order = get_orders_for_review(self.request).filter(lines__product=data["product"]).last()
+            order_line = OrderLine.objects.filter(
+                order_id__in=get_orders_for_review(self.request).values_list("id", flat=True),
+                product=data["product"],
+                supplier=data["supplier"]
+            ).last()
             ProductReview.objects.get_or_create(
                 product=data["product"],
                 reviewer=self.request.person,
+                order_line=order_line,
                 defaults=dict(
                     shop=self.request.shop,
-                    order=order,
                     rating=data["rating"],
                     comment=data["comment"],
                     would_recommend=data["would_recommend"]
@@ -66,10 +71,16 @@ class ProductReviewsView(DashboardViewMixin, TemplateView):
         context["reviews"] = ProductReview.objects.for_reviewer(self.request.shop, self.request.person)
 
         if pending_products_reviews.exists():
+            initial_values = [
+                dict(product=order_line.product, supplier=order_line.supplier)
+                for order_line in pending_products_reviews
+            ]
             context["reviews_formset"] = ProductReviewModelFormset(
                 form_kwargs=dict(request=self.request),
-                initial=[dict(product=product) for product in pending_products_reviews]
+                initial=initial_values
             )
+
+        context["multiple_suppliers"] = bool(Supplier.objects.count() > 1)
         return context
 
     def post(self, request):

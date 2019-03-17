@@ -10,7 +10,7 @@ import math
 from django.db.models import Avg, Sum
 
 from shuup.core import cache
-from shuup.core.models import Order, Product, ProductMode
+from shuup.core.models import Order, OrderLine, ProductMode
 from shuup_product_reviews.models import ProductReviewAggregation
 
 ACCEPTED_PRODUCT_MODES = [
@@ -34,19 +34,15 @@ def get_orders_for_review(request):
 
 def get_pending_products_reviews(request):
     """
-    Returns a Product queryset that contains all products
+    Returns a OrderLine queryset that contains all order lines
     that can be reviewed by the current request shop and contact
     """
-    orders = Order.objects.complete().filter(
-        shop=request.shop,
-        customer__in=[request.customer, request.person]
+    return OrderLine.objects.filter(
+        order_id__in=get_orders_for_review(request).values_list("id", flat=True),
+        product__isnull=False
+    ).exclude(
+        product_reviews__reviewer=request.person
     ).distinct()
-    products = Product.objects.all_except_deleted(shop=request.shop).filter(
-        order_lines__order__in=orders,
-        mode__in=[ProductMode.NORMAL, ProductMode.VARIATION_CHILD]
-    ).distinct()
-
-    return products.exclude(product_reviews__reviewer=request.person)
 
 
 def is_product_valid_mode(product):

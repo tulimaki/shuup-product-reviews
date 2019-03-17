@@ -35,7 +35,8 @@ class ProductReview(models.Model):
     shop = models.ForeignKey("shuup.Shop", verbose_name=_("shop"), related_name="product_reviews")
     product = models.ForeignKey("shuup.Product", verbose_name=_("product"), related_name="product_reviews")
     reviewer = models.ForeignKey("shuup.Contact", verbose_name=_("reviewer"), related_name="product_reviews")
-    order = models.ForeignKey("shuup.Order", verbose_name=_("order"), related_name="product_reviews")
+    order_line = models.ForeignKey(
+        "shuup.OrderLine", verbose_name=_("order line"), related_name="product_reviews")
     rating = models.PositiveIntegerField(
         verbose_name=_("rating"),
         validators=[MaxValueValidator(5), MinValueValidator(1)]
@@ -51,9 +52,6 @@ class ProductReview(models.Model):
     modified_on = models.DateTimeField(auto_now=True)
 
     objects = ProductReviewQuerySet.as_manager()
-
-    class Meta:
-        unique_together = ("reviewer", "product")
 
     def __str__(self):
         return _("Review for {product} by {reviewer_name}").format(

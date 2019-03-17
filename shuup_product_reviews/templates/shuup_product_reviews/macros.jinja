@@ -1,36 +1,39 @@
-{% macro render_reviews_table(reviews) %}
-<table class="table table-bordered table-striped customer-reviews-table">
-    <thead>
-        <tr>
-            <th></th>
-            <th>{{ _("Product") }}</th>
-            <th>{{ _("Rating") }}</th>
-            <th>{{ _("Comment") }}</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for review in reviews %}
-        <tr>
-            <td>
-            {% if review.product.primary_image %}
-                <img src="{{ review.product.primary_image|thumbnail(size=(50, 50)) }}" />
-            {% elif review.product.variation_parent and review.product.variation_parent.primary_image %}
-                <img src="{{ review.product.variation_parent.primary_image|thumbnail(size=(50, 50)) }}" />
-            {% endif %}
-            </td>
-            <td>
-                <a href="{{ url('shuup:product', pk=review.product.pk, slug=review.product.slug) }}">
-                    {{ review.product.name }}
-                </a>
-            </td>
-            <td>
-                {% for index in range(review.rating) %}
-                    <i class="fa fa-star rating-star"></i>
-                {% endfor %}
-            </td>
-            <td>{{ review.comment or "" }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
+{% macro render_reviews_table(reviews, show_supplier_info=False) %}
+<div class="table-responsive">
+    <table class="table table-bordered table-striped customer-reviews-table">
+        <thead>
+            <tr>
+                <th></th>
+                <th>{{ _("Product") }}</th>
+                <th>{{ _("Rating") }}</th>
+                <th>{{ _("Comment") }}</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for review in reviews %}
+            <tr>
+                <td>
+                {% if review.product.primary_image %}
+                    <img src="{{ review.product.primary_image|thumbnail(size=(50, 50)) }}" />
+                {% elif review.product.variation_parent and review.product.variation_parent.primary_image %}
+                    <img src="{{ review.product.variation_parent.primary_image|thumbnail(size=(50, 50)) }}" />
+                {% endif %}
+                </td>
+                <td>
+                    {% set link_product = review.product.variation_parent if review.product.variation_parent else review.product %}
+                    <a href="{{ url('shuup:supplier-product', supplier_pk=review.order_line.supplier.pk, pk=link_product.id, slug=link_product.slug) }}">
+                        {{ review.product.name }}{% if show_supplier_info %} ({{ review.order_line.supplier.name }}){% endif %}
+                    </a>
+                </td>
+                <td>
+                    {% for index in range(review.rating) %}
+                        <i class="fa fa-star rating-star"></i>
+                    {% endfor %}
+                </td>
+                <td>{{ review.comment or "" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endmacro %}

@@ -29,6 +29,10 @@ def create_random_review_for_product(shop, product, reviewer=None, order=None, a
             shop=shop
         )
 
+    order_line = order.lines.filter(product=product).first()
+    if not order_line:
+        order_line = order.lines().first()
+
     if rating is None:
         rating = random.randint(1, 5)
 
@@ -43,7 +47,7 @@ def create_random_review_for_product(shop, product, reviewer=None, order=None, a
         shop=shop,
         product=product,
         reviewer=reviewer,
-        order=order,
+        order_line=order_line,
         rating=rating,
         comment=comment,
         would_recommend=would_recommend,
@@ -67,6 +71,10 @@ def create_random_review_for_reviwer(shop, reviewer, order=None, approved=True,
             shop=shop
         )
 
+    order_line = order.lines.filter(product=product).first()
+    if not order_line:
+        order_line = order.lines().first()
+
     if rating is None:
         rating = random.randint(1, 5)
 
@@ -81,7 +89,7 @@ def create_random_review_for_reviwer(shop, reviewer, order=None, approved=True,
         shop=shop,
         product=product,
         reviewer=reviewer,
-        order=order,
+        order_line=order_line,
         rating=rating,
         comment=comment,
         would_recommend=would_recommend,
@@ -102,4 +110,28 @@ def create_random_order_to_review(shop, customer):
     order.create_shipment_of_all_products(factories.get_default_supplier())
     order.status = OrderStatus.objects.get_default_complete()
     order.save()
+    return order
+
+
+def create_multi_supplier_order_to_review(shop_product, customer):
+    order = factories.create_empty_order(shop=shop_product.shop)
+    order.full_clean()
+    order.save()
+
+    pricing_context = factories._get_pricing_context(order.shop, order.customer)
+    for supplier in shop_product.suppliers.all():
+        factories.add_product_to_order(
+            order, supplier, shop_product.product, 1, shop_product.default_price_value, 0, pricing_context
+        )
+
+    order.cache_prices()
+    order.save()
+
+    order.customer = customer
+    order.create_payment(order.taxful_total_price)
+    for supplier in shop_product.suppliers.all():
+        order.create_shipment_of_all_products(supplier)
+    order.status = OrderStatus.objects.get_default_complete()
+    order.save()
+
     return order

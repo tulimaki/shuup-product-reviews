@@ -12,47 +12,43 @@
 
 {% block dashboard_content %}
     {% set has_reviews = reviews.exists() %}
-    <h1>{{ _("Reviews") }}</h1>
     {% if reviews_formset %}
         <form method="POST">
         {{ reviews_formset.management_form }}
         {% csrf_token %}
         <h3>{{ _("Products to Review") }}</h3>
-        <table class="table table-bordered table-striped customer-pending-reviews-table">
-            <thead>
-                <tr>
-                    <th colspan="2" class="col-xs-4">{{ _("Product") }}</th>
-                    <th class="col-xs-3">{{ _("Rating") }}</th>
-                    <th class="col-xs-3">{{ _("Comment") }}</th>
-                    <th class="col-xs-2">{{ _("Would you recommend this product to a friend?") }}</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for review_form in reviews_formset %}
-                <tr>
-                    <td class="col-xs-1 product-image">
-                    {% set product = review_form.initial.product %}
-                    {% if product.primary_image %}
-                        <img src="{{ product.primary_image|thumbnail(size=(50, 50)) }}" />
-                    {% elif product.variation_parent and product.variation_parent.primary_image %}
-                        <img src="{{ product.variation_parent.primary_image|thumbnail(size=(50, 50)) }}" />
-                    {% endif %}
-                    </td>
-                    <td class="col-xs-3">
-                        {{ review_form.product }}
-                        <a href="{{ url('shuup:product', pk=review_form.initial.product.pk, slug=review_form.initial.product.slug) }}">
-                            {{ review_form.initial.product.name }}
-                        </a>
-                    </td>
-                    <td class="col-xs-3">
-                        {{ review_form.rating }}
-                    </td>
-                    <td class="col-xs-3">{{ review_form.comment }}</td>
-                    <td class="col-xs-2">{{ review_form.would_recommend }}</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped customer-pending-reviews-table">
+                <thead>
+                    <tr>
+                        <th class="col-xs-4" class="col-xs-4">{{ _("Product") }}</th>
+                        <th class="col-xs-3">{{ _("Rating") }}</th>
+                        <th class="col-xs-3">{{ _("Comment") }}</th>
+                        <th class="col-xs-2">{{ _("Would you recommend this product to a friend?") }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for review_form in reviews_formset %}
+                    <tr>
+                        <td class="col-xs-4">
+                            {{ review_form.product }}
+                            {{ review_form.supplier }}
+                            {% set review_product = review_form.initial.product %}
+                            {% set link_product = review_product.variation_parent if review_product.variation_parent else review_product %}
+                            <a href="{{ url('shuup:supplier-product', supplier_pk=review_form.initial.supplier.pk, pk=link_product.pk, slug=link_product.slug) }}">
+                                {{ review_form.initial.product.name }}{% if multiple_suppliers %} ({{ review_form.initial.supplier.name }}){% endif %}
+                            </a>
+                        </td>
+                        <td class="col-xs-3">
+                            {{ review_form.rating }}
+                        </td>
+                        <td class="col-xs-3">{{ review_form.comment }}</td>
+                        <td class="col-xs-2">{{ review_form.would_recommend }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
         <div class="text-center">
             <button type="submit" class="btn btn-primary">{{ _("Send Review") }}</button>
         </div>
@@ -60,7 +56,7 @@
     {% endif %}
     {% if has_reviews %}
         <h3>{{ _("Reviews") }}</h3>
-        {{ render_reviews_table(reviews) }}
+        {{ render_reviews_table(reviews, show_supplier_info=multiple_suppliers) }}
     {% endif %}
     {% if not reviews_formset and not has_reviews %}
         <p>{{ _("No products to review.") }}</p>

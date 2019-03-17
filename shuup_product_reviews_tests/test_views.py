@@ -15,12 +15,13 @@ from django.core.urlresolvers import reverse
 from django.test.client import Client
 from faker import Faker
 
+from shuup.core.models import Supplier
 from shuup.testing import factories
 from shuup.testing.soup_utils import extract_form_fields
 
 from .factories import (
-    create_random_order_to_review, create_random_review_for_product,
-    create_random_review_for_reviwer
+    create_multi_supplier_order_to_review, create_random_order_to_review,
+    create_random_review_for_product, create_random_review_for_reviwer
 )
 
 
@@ -97,6 +98,39 @@ def test_reviews_view(rf):
     response.render()
     content = response.content.decode("utf-8")
     assert "Products to Review" not in content
+
+
+@pytest.mark.django_db
+def test_reviews_view_multiple_supplires(rf):
+    shop = factories.get_default_shop()
+    customer = factories.create_random_person("en")
+    user = factories.create_random_user("en")
+    user.set_password("user")
+    user.save()
+    customer.user = user
+    customer.save()
+
+    supplier1_name = "Supplier 1 name"
+    supplier1 = Supplier.objects.create(identifier="1", name=supplier1_name)
+    supplier2_name = "Supplier 2 name"
+    supplier2 = Supplier.objects.create(identifier="2", name=supplier2_name)
+    product = factories.create_product("test1", shop=shop, supplier=supplier1, default_price=10)
+    shop_product = product.get_shop_instance(shop=shop)
+    assert shop_product.suppliers.filter(id=supplier1.id).exists()
+    shop_product.suppliers.add(supplier2)
+    assert shop_product.suppliers.filter(id=supplier2.id).exists()
+
+    create_multi_supplier_order_to_review(shop_product, customer)
+
+    client = SmartClient()
+    client.login(username=user.username, password="user")
+
+    # show all pending reviews which would be 1 for each supplier
+    response, soup = client.response_and_soup(reverse("shuup:product_reviews"))
+    assert "Products to Review" in soup.text
+    assert len(soup.findAll("tbody")[0].findChildren("tr")) == 2
+    assert "(%s)" % supplier2_name in soup.text
+    assert "(%s)" % supplier1_name in soup.text
 
 
 @pytest.mark.django_db
