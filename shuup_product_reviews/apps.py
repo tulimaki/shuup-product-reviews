@@ -14,7 +14,8 @@ class AppConfig(shuup.apps.AppConfig):
     verbose_name = "Shuup Product Reviews"
     provides = {
         "admin_module": [
-            "shuup_product_reviews.admin_module.ProductReviewsModule"
+            "shuup_product_reviews.admin_module.ProductReviewsModule",
+            "shuup_product_reviews.admin_module.SupplierReviewsModule"
         ],
         "xtheme_plugin": [
             "shuup_product_reviews.plugins.ProductReviewStarRatingsPlugin",

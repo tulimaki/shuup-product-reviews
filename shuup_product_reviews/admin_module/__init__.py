@@ -11,9 +11,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from shuup.admin.base import AdminModule, MenuEntry
 from shuup.admin.menu import PRODUCTS_MENU_CATEGORY
-from shuup.admin.utils.permissions import get_default_model_permissions
 from shuup.admin.utils.urls import admin_url
-from shuup_product_reviews.models import ProductReview
 
 
 class ProductReviewsModule(AdminModule):
@@ -25,14 +23,12 @@ class ProductReviewsModule(AdminModule):
             admin_url(
                 r"^product_reviews/$",
                 "shuup_product_reviews.admin_module.views.ProductReviewListView",
-                name="product_reviews.list",
-                permissions=get_default_model_permissions(ProductReview)
+                name="product_reviews.list"
             ),
             admin_url(
                 r"^product_reviews/list-settings/",
                 "shuup.admin.modules.settings.views.ListSettingsView",
-                name="product_reviews.list_settings",
-                permissions=get_default_model_permissions(ProductReview)
+                name="product_reviews.list_settings"
             )
         ]
 
@@ -43,9 +39,38 @@ class ProductReviewsModule(AdminModule):
                 icon="fa fa-star",
                 url="shuup_admin:product_reviews.list",
                 category=PRODUCTS_MENU_CATEGORY,
+                subcategory="products",
                 ordering=5
             )
         ]
 
-    def get_required_permissions(self):
-        return get_default_model_permissions(ProductReview)
+
+class SupplierReviewsModule(AdminModule):
+    name = _("Vendor Reviews")
+    breadcrumbs_menu_entry = MenuEntry(name, url="shuup_admin:vendor_reviews.list")
+
+    def get_urls(self):
+        return [
+            admin_url(
+                r"^vendor_reviews/$",
+                "shuup_product_reviews.admin_module.views.VendorReviewListView",
+                name="vendor_reviews.list"
+            ),
+            admin_url(
+                r"^vendor_reviews/list-settings/",
+                "shuup.admin.modules.settings.views.ListSettingsView",
+                name="vendor_reviews.list_settings"
+            )
+        ]
+
+    def get_menu_entries(self, request):
+        return [
+            MenuEntry(
+                text=self.name,
+                icon="fa fa-star",
+                url="shuup_admin:vendor_reviews.list",
+                category=PRODUCTS_MENU_CATEGORY,
+                subcategory="products",
+                ordering=6
+            )
+        ]
