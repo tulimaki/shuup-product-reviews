@@ -14,8 +14,8 @@ from shuup.xtheme import TemplatedPlugin
 from shuup.xtheme.plugins.forms import TranslatableField
 from shuup_product_reviews.models import ProductReview
 from shuup_product_reviews.utils import (
-    get_reviews_aggregation_for_product, get_stars_from_rating,
-    is_product_valid_mode
+    get_reviews_aggregation_for_product, get_reviews_aggregation_for_supplier,
+    get_stars_from_rating, is_product_valid_mode
 )
 
 
@@ -65,6 +65,42 @@ class ProductReviewStarRatingsPlugin(TemplatedPlugin):
         return context
 
 
+class SupplierReviewStarRatingsPlugin(TemplatedPlugin):
+    identifier = "shuup_product_reviews.supplier_star_rating"
+    name = _("Vendor Review Rating")
+    template_name = "shuup_product_reviews/plugins/supplier_star_rating.jinja"
+    required_context_variables = ["supplier"]
+
+    fields = [
+        ("customer_ratings_title", TranslatableField(
+            label=_("Customer ratings title"),
+            required=False,
+            initial=_("Customer Ratings:")
+        ))
+    ]
+
+    def get_context_data(self, context):
+        context = dict(context)
+        supplier = context["supplier"]
+
+        if supplier and supplier.enabled:
+            supplier_rating = get_reviews_aggregation_for_supplier(supplier)
+            if supplier_rating["reviews"]:
+                rating = supplier_rating["rating"]
+                reviews = supplier_rating["reviews"]
+                (full_stars, empty_stars, half_star) = get_stars_from_rating(rating)
+                context.update({
+                    "half_star": half_star,
+                    "full_stars": full_stars,
+                    "empty_stars": empty_stars,
+                    "reviews": reviews,
+                    "rating": rating,
+                    "customer_ratings_title": self.get_translated_value("customer_ratings_title")
+                })
+
+        return context
+
+
 class ProductReviewCommentsPlugin(TemplatedPlugin):
     identifier = "shuup_product_reviews.review_comments"
     name = _("Product Review Comments")
@@ -92,6 +128,37 @@ class ProductReviewCommentsPlugin(TemplatedPlugin):
             )
             if reviews.exists():
                 context["review_product"] = product
+                context["title"] = self.get_translated_value("title")
+
+        return context
+
+
+class SupplierReviewCommentsPlugin(TemplatedPlugin):
+    identifier = "shuup_product_reviews.supplier_comments"
+    name = _("Vendor Review Comments")
+    template_name = "shuup_product_reviews/plugins/supplier_reviews_comments.jinja"
+    required_context_variables = ["supplier"]
+
+    fields = [
+        ("title", TranslatableField(
+            label=_("Title"),
+            required=False,
+            initial=_("Reviews")
+        ))
+    ]
+
+    def get_context_data(self, context):
+        context = dict(context)
+        supplier = context["supplier"]
+
+        if supplier and supplier.enabled:
+            reviews = ProductReview.objects.approved().filter(
+                shop=context["request"].shop,
+                order_line__supplier=supplier,
+                comment__isnull=False
+            )
+            if reviews.exists():
+                context["review_supplier"] = supplier
                 context["title"] = self.get_translated_value("title")
 
         return context

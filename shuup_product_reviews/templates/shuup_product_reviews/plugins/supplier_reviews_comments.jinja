@@ -1,0 +1,3 @@
+{% if review_supplier %}
+<div class="product-review-comments" data-url="{{ url('shuup:supplier_review_comments', pk=review_supplier.pk) }}" data-title="{{ title or "" }}"></div>
+{% endif %}

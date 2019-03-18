@@ -93,7 +93,9 @@ class ProductReviewsView(DashboardViewMixin, TemplateView):
         return HttpResponseRedirect(reverse("shuup:product_reviews"))
 
 
-class ProductReviewCommentsView(View):
+class BaseCommentsView(View):
+    view_name = ""
+
     def get(self, request, *args, **kwargs):
         page = self.get_reviews_page()
         reviews = [
@@ -110,7 +112,7 @@ class ProductReviewCommentsView(View):
         next_page_url = None
         if page.has_next():
             next_page_url = "{}?page={}".format(
-                reverse('shuup:product_review_comments', kwargs=dict(pk=self.kwargs["pk"])),
+                reverse('shuup:%s' % self.view_name, kwargs=dict(pk=self.kwargs["pk"])),
                 page.number + 1
             )
 
@@ -120,11 +122,37 @@ class ProductReviewCommentsView(View):
         }
         return JsonResponse(payload)
 
+
+class ProductReviewCommentsView(BaseCommentsView):
+    view_name = "product_review_comments"
+
     def get_reviews_page(self):
         product = Product.objects.filter(pk=self.kwargs["pk"], shop_products__shop=self.request.shop).first()
         product_ids = [product.pk] + list(product.variation_children.values_list("pk", flat=True))
         queryset = ProductReview.objects.approved().filter(
             product__id__in=product_ids,
+            shop=self.request.shop,
+            comment__isnull=False
+        ).order_by("-created_on")
+
+        paginator = Paginator(queryset, settings.PRODUCT_REVIEWS_PAGE_SIZE)
+        page = self.request.GET.get('page')
+
+        try:
+            return paginator.page(page)
+        except PageNotAnInteger:
+            return paginator.page(1)
+        except EmptyPage:
+            return paginator.page(paginator.num_pages)
+
+
+class SupplierReviewCommentsView(BaseCommentsView):
+    view_name = "supplier_review_comments"
+
+    def get_reviews_page(self):
+        supplier = Supplier.objects.filter(pk=self.kwargs["pk"], shops=self.request.shop).first()
+        queryset = ProductReview.objects.approved().filter(
+            order_line__supplier=supplier,
             shop=self.request.shop,
             comment__isnull=False
         ).order_by("-created_on")

@@ -1,0 +1,28 @@
+{% if reviews %}
+<div class="product-reviews-rating-star">
+    {% if customer_ratings_title %}
+    <div class="customer-rating-label">
+        <h3>{{ customer_ratings_title }}</h3>
+    </div>
+    {% endif %}
+    <span class="stars">
+        {% for full_star in range(full_stars) %}
+            <i class="fa fa-star star-rating-full"></i>
+        {% endfor %}
+        {% if half_star %}
+            <i class="fa fa-star-half-o star-rating-half"></i>
+        {% endif %}
+        {% for empty_star in range(empty_stars) %}
+            <i class="fa fa-star-o star-rating-empty"></i>
+        {% endfor %}
+    </span>
+    <span class="rating">{{ "%0.1f"|format(rating) }}</span>
+    <span class="count">
+        {%- trans reviews_count=reviews -%}
+            {{ reviews_count }} review
+        {%- pluralize -%}
+            {{ reviews_count }} reviews
+        {%- endtrans -%}
+    </span>
+</div>
+{% endif %}
