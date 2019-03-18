@@ -135,3 +135,14 @@ def create_multi_supplier_order_to_review(shop_product, customer):
     order.save()
 
     return order
+
+
+def create_review_for_order_line(order_line, rating, approved=True):
+    return ProductReview.objects.create(
+        shop=order_line.order.shop,
+        product=order_line.product,
+        reviewer=order_line.order.customer,
+        order_line=order_line,
+        rating=rating,
+        status=(ReviewStatus.APPROVED if approved else ReviewStatus.PENDING)
+    )

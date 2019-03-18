@@ -11,7 +11,9 @@ from django.db.models import Avg, Sum
 
 from shuup.core import cache
 from shuup.core.models import Order, OrderLine, ProductMode
-from shuup_product_reviews.models import ProductReviewAggregation
+from shuup_product_reviews.models import (
+    ProductReviewAggregation, SupplierReviewAggregation
+)
 
 ACCEPTED_PRODUCT_MODES = [
     ProductMode.NORMAL,
@@ -61,6 +63,16 @@ def get_reviews_aggregation_for_product(product):
         rating=Avg("rating"),
         reviews=Sum("review_count"),
         would_recommend=Sum("would_recommend")
+    )
+
+
+def get_reviews_aggregation_for_supplier(supplier):
+    """
+    Calculate the reviews totals for a giving supplier
+    """
+    return SupplierReviewAggregation.objects.filter(supplier=supplier).aggregate(
+        rating=Avg("rating"),
+        reviews=Sum("review_count")
     )
 
 

@@ -61,7 +61,8 @@ class ProductReview(models.Model):
 
     def save(self, *args, **kwargs):
         super(ProductReview, self).save(*args, **kwargs)
-        recalculate_aggregation(self.product)
+        recalculate_aggregation_for_product(self.product)
+        recalculate_aggregation_for_supplier(self.order_line.supplier)
         from shuup_product_reviews.utils import bump_star_rating_cache
         bump_star_rating_cache(self.pk)
 
@@ -85,16 +86,22 @@ class ProductReviewAggregation(models.Model):
     would_recommend = models.PositiveIntegerField(verbose_name=_("users would recommend"), default=0)
 
 
-def recalculate_aggregation(product):
-    reviews = ProductReview.objects.filter(product=product, status=ReviewStatus.APPROVED)
-    if not reviews.exists():
+class SupplierReviewAggregation(models.Model):
+    supplier = models.OneToOneField(
+        "shuup.Supplier",
+        verbose_name=_("supplier"),
+        related_name="supplier_reviews_aggregation",
+    )
+    rating = models.DecimalField(max_digits=2, decimal_places=1, verbose_name=_("rating"), default=0)
+    review_count = models.PositiveIntegerField(verbose_name=_("review count"), default=0)
+
+
+def recalculate_aggregation_for_queryset(queryset):
+    if not queryset.exists():
         # Make sure there is no aggregation since there is no approved reviews
-        aggregation = ProductReviewAggregation.objects.filter(product=product).first()
-        if aggregation:
-            aggregation.delete()
         return
 
-    reviews_agg = ProductReview.objects.filter(product=product, status=ReviewStatus.APPROVED).aggregate(
+    return queryset.aggregate(
         count=Count("pk"),
         rating=Avg("rating"),
         would_recommend=Sum(
@@ -106,8 +113,39 @@ def recalculate_aggregation(product):
             )
         )
     )
+
+
+def recalculate_aggregation_for_product(product):
+    reviews_agg = recalculate_aggregation_for_queryset(
+        ProductReview.objects.filter(product=product, status=ReviewStatus.APPROVED)
+    )
+    if not reviews_agg:
+        aggregation = ProductReviewAggregation.objects.filter(product=product).first()
+        if aggregation:
+            aggregation.delete()
+        return
+
     ProductReviewAggregation.objects.update_or_create(product=product, defaults=dict(
         review_count=reviews_agg["count"],
         rating=reviews_agg["rating"],
         would_recommend=reviews_agg["would_recommend"]
+    ))
+
+
+def recalculate_aggregation_for_supplier(supplier):
+    if not supplier:
+        return
+
+    reviews_agg = recalculate_aggregation_for_queryset(
+        ProductReview.objects.filter(order_line__supplier=supplier, status=ReviewStatus.APPROVED)
+    )
+    if not reviews_agg:
+        aggregation = SupplierReviewAggregation.objects.filter(supplier=supplier).first()
+        if aggregation:
+            aggregation.delete()
+        return
+
+    SupplierReviewAggregation.objects.update_or_create(supplier=supplier, defaults=dict(
+        review_count=reviews_agg["count"],
+        rating=reviews_agg["rating"]
     ))
